@@ -1,0 +1,88 @@
+{{ define "card" }}
+
+<div>
+	<p>{{ .Value }} </p>
+
+	<p>{{ .Palo }} </p>
+</div>
+
+{{ end}}
+
+
+{{ define "game" }}
+{{ template "header" }}
+
+<div>
+	{{ range .Cards }}
+	{{ template "card" . }}
+	{{ end }}
+</div>
+
+<div>
+	<p>RESULT: {{ .Result }} </p>
+</div>
+
+<div>
+	<form id="foundButton" action="/game/found" method="POST">
+		<input type="submit" value="Found it!" />
+	</form>
+	<form id="impossibleButton" action="/game/impossible" method="POST">
+		<input type="submit" value="Impossible" />
+	</form>
+</div>
+
+
+
+<script>
+
+	var url = window.href + "/ws"
+	url = "ws://localhost:12312/game/1/ws"
+	const socket = new WebSocket(url, ["kripto"])
+
+
+	impossibleButton.addEventListener("onsubmit", (e) => {
+		e.preventDefault()
+		console.log("impossible")
+
+	})
+	foundButton.addEventListener("onsubmit", (e) => {
+		e.preventDefault()
+		console.log("found!")
+	})
+
+	socket.addEventListener("open", (event) => {
+		socket.send(
+			'{\
+				"type": "kripto",\
+				"payload": [\
+					{\
+						"n1": 1,\
+						"operation": "+",\
+						"n2": 1\
+					},\
+					{\
+						"n1": 1,\
+						"operation": "+",\
+						"n2": 1\
+					},\
+					{\
+						"n1": 2,\
+						"operation": "+",\
+						"n2": 2\
+					}\
+				]\
+			}'
+		)
+	});
+
+	socket.addEventListener("message", e => {
+		console.log("???")
+		console.log(e.data);
+	});
+
+
+
+</script>
+
+{{ template "footer" }}
+{{ end }}

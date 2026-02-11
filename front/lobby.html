@@ -1,0 +1,19 @@
+{{define "lobby"}}
+
+<h2>SOY UN LOBBY</h2>
+
+
+<div>
+	{{ range .Lobbies }}
+	<div>
+		<p>{{.Name}} </p><br />
+		<a href="{{.Link}}">Enter</a>
+	</div>
+
+	{{ else }}
+	<p> No lobbies! </p>
+	{{ end }}
+</div>
+<button disabled>Create Lobby> </button>
+
+{{end}}
