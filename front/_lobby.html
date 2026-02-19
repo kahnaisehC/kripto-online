@@ -1,0 +1,26 @@
+{{define "lobby"}}
+<h2>SOY UN LOBBY</h2>
+
+	<input id="txt_input" type="text"/>
+
+	<button id="btn">Create Lobby </button>
+
+
+<script>
+
+	let socket = new WebSocket("ws://localhost:12312/api/game/1/ws", ["kripto"])
+	btn.addEventListener("click", e =>{
+		
+		socket.send(txt_input.value)
+	})
+
+	txt_input.addEventListener("keydown", e =>{
+		if(e.code === "Enter"){
+			btn.click();
+		}
+	})
+
+
+</script>
+
+{{end}}

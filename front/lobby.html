@@ -1,19 +1,74 @@
 {{define "lobby"}}
+{{ template "header" }}
 
-<h2>SOY UN LOBBY</h2>
+  <table id=tableLobby>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Amount of players</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>Alice</td>
+        <td>alice@example.com</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <form action="/api/lobby" method="POST">
+	  <input type="text" name="lobbyName" required/>
+	  <button type="submit">create new thingy</button>
+  </form>
+
+<script>
+	
+	fetch("/api/lobby")
+		.then(res => {
+			if (!res.ok) {
+				throw Error('Error fetching users data');
+			}
+			return res.json();
+		})
+		.then(lobbies => {
+			if(lobbies === null || !lobbies.length){
+				return 
+			}
+
+			for(let lobby of lobbies){
+				let bod = tableLobby.querySelector("tbody")
+				let tr = document.createElement("tr")
+				let id = document.createElement("td")
+				id.innerText = lobby.ID
+
+				let Name = document.createElement("td")
+				let NameLink = document.createElement("a")
+				NameLink.innerText = lobby.Name
+				NameLink.href = lobby.Link
+				Name.append(NameLink)
+
+				let AmountOfPlayers = document.createElement("td")
+				console.log(lobby.Conn)
+				if(lobby.Conn === null){
+					len = 0
+				}else{
+					len = lobby.Conn.length
+				}
+
+				AmountOfPlayers.innerText = len
 
 
-<div>
-	{{ range .Lobbies }}
-	<div>
-		<p>{{.Name}} </p><br />
-		<a href="{{.Link}}">Enter</a>
-	</div>
+				tr.append(id, Name, AmountOfPlayers)
+				bod.append(tr);
+			}
+		})
+		.catch(err => {
+			console.error(err)
+		});
+</script>
 
-	{{ else }}
-	<p> No lobbies! </p>
-	{{ end }}
-</div>
-<button disabled>Create Lobby> </button>
 
+{{ template "footer" }}
 {{end}}

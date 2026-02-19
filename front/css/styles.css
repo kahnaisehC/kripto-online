@@ -2,3 +2,16 @@ body {
 	color: white;
 	background-color: #333333;
 }
+table {
+  border
+  border-collapse: collapse;
+  width: 60%;
+}
+th, td {
+  border: 1px solid #333;
+  padding: 8px;
+  text-align: left;
+}
+th {
+  background-color: #000000;
+}

@@ -20,14 +20,21 @@ func respondWithJSON(w http.ResponseWriter, code int, data []byte) {
 	w.Write(data)
 }
 
+type DB interface{}
+
+type voidDB struct{}
+
 type config struct {
-	connString    string
-	temp          *template.Template
-	sessionIDs    map[int]string
-	currSessionID int
-	playerIDs     map[int]struct{}
-	games         map[int]GameState
-	sessions      map[Session]ID
+	connString         string
+	temp               *template.Template
+	sessionIDs         map[int]string
+	currSessionID      int
+	playerIDtoUsername map[ID]string
+	games              map[int]GameState
+	sessions           map[string]ID
+	db                 DB
+	lobbies            []Lobby
+	jwtKey             string
 }
 
 func main() {
@@ -36,13 +43,31 @@ func main() {
 		panic(err)
 	}
 	cfg := config{
-		connString:    sampleConnString,
-		temp:          temp,
-		sessionIDs:    map[int]string{},
-		currSessionID: 1,
-		playerIDs:     map[int]struct{}{},
-		games:         sampleGames,
+		connString:         sampleConnString,
+		temp:               temp,
+		sessionIDs:         map[int]string{},
+		currSessionID:      1,
+		playerIDtoUsername: map[ID]string{},
+		games:              sampleGames,
+		db:                 voidDB{},
+		jwtKey:             os.Getenv("JWT_KEY"),
+		lobbies: []Lobby{
+			{
+				ID:      10,
+				Name:    "IAN",
+				Link:    "!!",
+				AdminID: 1000,
+				Conn: []Connection{
+					{
+						UserName: "ianuser",
+						userID:   1000,
+						conn:     nil,
+					},
+				},
+			},
+		},
 	}
+
 	mux := http.NewServeMux()
 
 	// static assets
@@ -50,21 +75,32 @@ func main() {
 
 	// frontend endpoints
 	// TODO: Implement this
-	mux.HandleFunc("GET /lobby", cfg.handlerGetLobby)
-	// TODO: Implement this
-	mux.HandleFunc("POST /lobby", middlewareLogParty(cfg.handlerPostLobby))
+	mux.HandleFunc("GET /lobby", cfg.handlerTemplate("lobby"))
 
+	// TODO: Implement htis
+	mux.HandleFunc("GET /login", cfg.handlerTemplate("login"))
+	mux.HandleFunc("/", cfg.handlerTemplate("login"))
 	// API
-	mux.HandleFunc("GET /api/game/", cfg.handlerGetAllGames)
+	// NOTE: This only gives the client a cookie with a random number
+	// that will be used to identify it later
+	// TODO: Use JWT or something more sophisticated
+	mux.HandleFunc("POST /api/login", cfg.handlerLogin)
+
+	mux.HandleFunc("POST /api/lobby", cfg.handlerPostLobby)
+
 	// TODO: Implement this
-	mux.HandleFunc("POST /api/game/", cfg.handlerCreateGame)
+	mux.HandleFunc("GET /api/lobby", cfg.handlerGetLobbies)
+	// TODO: Implement this
+	mux.HandleFunc("GET /api/game", cfg.handlerGetAllGames)
+	// TODO: Implement this
+	mux.HandleFunc("POST /api/game", cfg.handlerCreateGame)
 
 	mux.HandleFunc("GET /api/game/{gameID}", cfg.handlerGetGame)
 	// TODO: Implement this
 	mux.HandleFunc("POST /api/game/{gameID}", cfg.handlerJoinGame)
 
 	// TODO: Implement this
-	mux.HandleFunc("api/game/{gameID}/ws", cfg.handlerGameWebsocket)
+	mux.HandleFunc("/api/game/{gameID}/ws", cfg.handlerGameWebsocket)
 
 	serverChannel := make(chan error, 1)
 	go func() {

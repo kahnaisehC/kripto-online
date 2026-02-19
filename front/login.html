@@ -1,0 +1,10 @@
+{{ define "login" }}
+{{ template "header" }} 
+<form id=loginForm action="/api/login" method="POST">
+  <label>
+    Name: <input type="text" name="userName" required/>
+  </label>
+  <button type="submit">Start playing!</button>
+</form>
+{{ template "footer" }} 
+{{ end }}
