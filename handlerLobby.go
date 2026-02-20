@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -111,9 +112,16 @@ func (cfg *config) handlerPostLobby(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	adminID, err := strconv.Atoi(adminIDCookie.Name)
+	adminIDInt, err := strconv.Atoi(adminIDCookie.Value)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, errors.New("malformed id. have to login again"))
+		return
+	}
+	adminID := ID(adminIDInt)
+
+	userName, ok := cfg.playerIDtoUsername[adminID]
+	if !ok {
+		respondWithError(w, http.StatusUnauthorized, errors.New("invalid userID. have to login again"))
 		return
 	}
 
@@ -125,7 +133,7 @@ func (cfg *config) handlerPostLobby(w http.ResponseWriter, r *http.Request) {
 	lobbySizeString := r.FormValue("lobbySize")
 	lobbySize, err := strconv.Atoi(lobbySizeString)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, errors.New("not found lobby name"))
+		respondWithError(w, http.StatusBadRequest, errors.New("not found lobby size"))
 		return
 	}
 	if lobbySize >= MaxLobbySize || lobbySize < 2 {
@@ -143,11 +151,58 @@ func (cfg *config) handlerPostLobby(w http.ResponseWriter, r *http.Request) {
 		Conn:    nil,
 		Size:    lobbySize,
 	}
-	data, err := json.Marshal(newLobby)
+	newLobbyData := LobbyResponse{
+		ID:      lobbyID,
+		Name:    lobbyName,
+		Link:    lobbyURL,
+		AdminID: ID(adminID),
+		Players: map[ID]string{
+			ID(adminID): userName,
+		},
+		Size: lobbySize,
+	}
+	data, err := json.Marshal(newLobbyData)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, err)
 		return
 	}
-	cfg.lobbies = append(cfg.lobbies, newLobby)
+	cfg.lobbies[lobbyID] = newLobby
 	respondWithJSON(w, http.StatusCreated, data)
+}
+
+func (cfg *config) handlerDeleteLobby(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+	gameIDString := r.PathValue("gameID")
+	gameIDInt, err := strconv.Atoi(gameIDString)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, err)
+		return
+	}
+	gameID := ID(gameIDInt)
+	if _, ok := cfg.lobbies[ID(gameID)]; !ok {
+		respondWithError(w, http.StatusNotFound, errors.New("could'n fiind gameID "))
+		return
+	}
+
+	userIDCookie, err := r.Cookie("userID")
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, err)
+		return
+	}
+	userID, err := strconv.Atoi(userIDCookie.Value)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, err)
+		return
+	}
+	if ID(userID) != cfg.lobbies[ID(gameID)].AdminID {
+		respondWithError(w, http.StatusUnauthorized, fmt.Errorf("%v is not the admin of %v, %v is", userID, gameID, cfg.lobbies[ID(gameID)].AdminID))
+		return
+	}
+	delete(cfg.lobbies, ID(gameID))
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("successfully deleted the lobby"))
+}
+
+func (cfg *config) handlerPatchLobby(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
 }

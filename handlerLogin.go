@@ -26,7 +26,6 @@ func getUserID(r *http.Request) (ID, error) {
 		return 0, err
 	}
 	return ID(id), nil
-
 }
 
 func randomUserName() string {
@@ -39,13 +38,15 @@ func (cfg *config) annonLogin(w http.ResponseWriter) (ID, string) {
 	CookieName := http.Cookie{
 		Name:  "userName",
 		Value: userName,
+		Path:  "/",
 	}
 
 	userId := genUserID()
 	userIdString := strconv.Itoa(int(userId))
 	CookieID := http.Cookie{
-		Name:  "ID",
+		Name:  "userID",
 		Value: userIdString,
+		Path:  "/",
 	}
 
 	http.SetCookie(w, &CookieID)
@@ -65,22 +66,21 @@ func (cfg *config) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	CookieName := http.Cookie{
 		Name:  "userName",
 		Value: userName,
+		Path:  "/",
 	}
 
 	userId := genUserID()
 	userIdString := strconv.Itoa(int(userId))
 	CookieID := http.Cookie{
-		Name:  "ID",
+		Name:  "userID",
 		Value: userIdString,
+		Path:  "/",
 	}
 
 	http.SetCookie(w, &CookieID)
 	http.SetCookie(w, &CookieName)
 
-	r.AddCookie(&CookieID)
-	r.AddCookie(&CookieName)
-
 	cfg.playerIDtoUsername[userId] = userName
-
-	http.Redirect(w, r, "/lobby", http.StatusSeeOther)
+	w.WriteHeader(http.StatusAccepted)
+	w.Write([]byte("Successfully logged in"))
 }

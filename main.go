@@ -33,7 +33,7 @@ type config struct {
 	games              map[int]GameState
 	sessions           map[string]ID
 	db                 DB
-	lobbies            []Lobby
+	lobbies            map[ID]Lobby
 	jwtKey             string
 }
 
@@ -51,8 +51,8 @@ func main() {
 		games:              sampleGames,
 		db:                 voidDB{},
 		jwtKey:             os.Getenv("JWT_KEY"),
-		lobbies: []Lobby{
-			{
+		lobbies: map[ID]Lobby{
+			1: {
 				ID:      10,
 				Name:    "IAN",
 				Link:    "!!",
@@ -76,8 +76,8 @@ func main() {
 	// frontend endpoints
 	// TODO: Implement this
 	mux.HandleFunc("GET /lobby", cfg.handlerTemplate("lobby"))
+	mux.HandleFunc("GET /lobby/{gameID}", cfg.handlerTemplate("lobby"))
 
-	// TODO: Implement htis
 	mux.HandleFunc("GET /login", cfg.handlerTemplate("login"))
 	mux.HandleFunc("/", cfg.handlerTemplate("login"))
 	// API
@@ -86,19 +86,21 @@ func main() {
 	// TODO: Use JWT or something more sophisticated
 	mux.HandleFunc("POST /api/login", cfg.handlerLogin)
 
+	mux.HandleFunc("GET /api/lobby", cfg.handlerGetLobbies)
 	mux.HandleFunc("POST /api/lobby", cfg.handlerPostLobby)
 
 	// TODO: Implement this
-	mux.HandleFunc("GET /api/lobby", cfg.handlerGetLobbies)
+	mux.HandleFunc("DELETE /api/lobby/{gameID}", cfg.handlerDeleteLobby)
+	mux.HandleFunc("GET /api/lobby/{gameID}", cfg.handlerGetLobby)
 	// TODO: Implement this
-	mux.HandleFunc("GET /api/game", cfg.handlerGetAllGames)
-	// TODO: Implement this
-	mux.HandleFunc("POST /api/game", cfg.handlerCreateGame)
+	mux.HandleFunc("PATCH /api/lobby/{gameID}", cfg.handlerPatchLobby)
 
+	// TODO: Implement this
 	mux.HandleFunc("GET /api/game/{gameID}", cfg.handlerGetGame)
 	// TODO: Implement this
 	mux.HandleFunc("POST /api/game/{gameID}", cfg.handlerJoinGame)
 
+	// Websockets
 	// TODO: Implement this
 	mux.HandleFunc("/api/game/{gameID}/ws", cfg.handlerGameWebsocket)
 

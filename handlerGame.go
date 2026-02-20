@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
 	"errors"
 	"net/http"
 	"strconv"
@@ -34,10 +33,7 @@ type GameState struct {
 	Connections []Connection
 }
 
-var connectionID ID = 0
-
 func (cfg *config) handlerGameWebsocket(w http.ResponseWriter, r *http.Request) {
-
 	idString := r.PathValue("gameID")
 	if idString == "" {
 		respondWithError(w, http.StatusBadRequest, errors.New("no game ID in path parameter"))
@@ -75,41 +71,4 @@ func (cfg *config) handlerGameWebsocket(w http.ResponseWriter, r *http.Request) 
 		userID: userID,
 	})
 	con.Write(context.Background(), websocket.MessageText, []byte("hello"))
-}
-
-func (cfg *config) addSessionCookie(r *http.Request) string {
-	sessionData := make([]byte, 64)
-	rand.Read(sessionData)
-	sessionCookie := http.Cookie{
-		Name:  "session",
-		Value: string(sessionData),
-	}
-	r.AddCookie(&sessionCookie)
-
-	return string(sessionData)
-}
-
-func (cfg *config) handlerCreateGame(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
-
-	r.ParseForm()
-	var adminSession string
-	_ = adminSession
-
-	adminSessionCookie, err := r.Cookie("session")
-	if err != nil {
-		adminSession = cfg.addSessionCookie(r)
-	} else {
-		adminSession = adminSessionCookie.Value
-	}
-	gameState := GameState{
-		Leftover:  make(map[ID]struct{}),
-		Order:     make([]ID, 0),
-		Players:   make(map[ID]struct{}),
-		Phase:     -1,
-		PointedID: -1,
-		Admin:     -1,
-		ID:        -1,
-	}
-	cfg.games[-1] = gameState
 }
