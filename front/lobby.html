@@ -26,6 +26,9 @@
 
 <script>
 
+
+
+
 	fetch("/api/lobby")
 		.then(res => {
 			if (!res.ok) {
@@ -34,12 +37,14 @@
 			return res.json();
 		})
 		.then(lobbies => {
-			if (lobbies === null || !lobbies.length) {
+			console.log(lobbies)
+			if (!lobbies || !lobbies.length) {
 				return
 			}
+			console.log("!?")
 
+			let bod = tableLobby.querySelector("tbody")
 			for (let lobby of lobbies) {
-				let bod = tableLobby.querySelector("tbody")
 				let tr = document.createElement("tr")
 				let id = document.createElement("td")
 				id.innerText = lobby.ID
@@ -51,8 +56,7 @@
 				Name.append(NameLink)
 
 				let AmountOfPlayers = document.createElement("td")
-				console.log(lobby.Conn)
-				if (lobby.Conn === null) {
+				if (!lobby.Conn) {
 					len = 0
 				} else {
 					len = lobby.Conn.length
@@ -64,6 +68,7 @@
 				tr.append(id, Name, AmountOfPlayers)
 				bod.append(tr);
 			}
+
 		})
 		.catch(err => {
 			console.error(err)

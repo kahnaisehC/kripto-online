@@ -51,21 +51,7 @@ func main() {
 		games:              sampleGames,
 		db:                 voidDB{},
 		jwtKey:             os.Getenv("JWT_KEY"),
-		lobbies: map[ID]Lobby{
-			1: {
-				ID:      10,
-				Name:    "IAN",
-				Link:    "!!",
-				AdminID: 1000,
-				Conn: []Connection{
-					{
-						UserName: "ianuser",
-						userID:   1000,
-						conn:     nil,
-					},
-				},
-			},
-		},
+		lobbies:            map[ID]Lobby{},
 	}
 
 	mux := http.NewServeMux()
@@ -86,13 +72,12 @@ func main() {
 	// TODO: Use JWT or something more sophisticated
 	mux.HandleFunc("POST /api/login", cfg.handlerLogin)
 
+	// TODO: ADD PAGINATION
 	mux.HandleFunc("GET /api/lobby", cfg.handlerGetLobbies)
 	mux.HandleFunc("POST /api/lobby", cfg.handlerPostLobby)
 
-	// TODO: Implement this
 	mux.HandleFunc("DELETE /api/lobby/{gameID}", cfg.handlerDeleteLobby)
 	mux.HandleFunc("GET /api/lobby/{gameID}", cfg.handlerGetLobby)
-	// TODO: Implement this
 	mux.HandleFunc("PATCH /api/lobby/{gameID}", cfg.handlerPatchLobby)
 
 	// TODO: Implement this

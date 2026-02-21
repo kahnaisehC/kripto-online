@@ -10,6 +10,8 @@ import (
 	"github.com/coder/websocket"
 )
 
+type void struct{}
+
 const MaxLobbySize = 32
 
 var _counter ID = 1
@@ -30,34 +32,24 @@ type Lobby struct {
 	Name    string
 	Link    string
 	AdminID ID
-	Conn    []Connection
+	conn    []Connection
 	Size    int
+	Players map[ID]struct{}
 }
-type LobbyResponse struct {
-	ID      ID
-	Name    string
-	AdminID ID
-	Link    string
-	Players map[ID]string
-	Size    int
-}
+
+const PageSize = 10
 
 func (cfg *config) handlerGetLobbies(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
+	lobbies := make([]Lobby, 0, PageSize)
 
-	lobbiesData := make([]LobbyResponse, len(cfg.lobbies))
-	for i := range cfg.lobbies {
-		lobbiesData[i].ID = cfg.lobbies[i].ID
-		lobbiesData[i].Name = cfg.lobbies[i].Name
-		lobbiesData[i].AdminID = cfg.lobbies[i].AdminID
-		lobbiesData[i].Link = cfg.lobbies[i].Link
-		lobbiesData[i].Size = cfg.lobbies[i].Size
-		for _, con := range cfg.lobbies[i].Conn {
-			lobbiesData[i].Players[con.userID] = con.UserName
+	for _, lobby := range cfg.lobbies {
+		lobbies = append(lobbies, lobby)
+		if len(lobbies) == PageSize {
+			break
 		}
 	}
-
-	data, err := json.Marshal(lobbiesData)
+	data, err := json.Marshal(lobbies)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, err)
 		return
@@ -75,18 +67,13 @@ func (cfg *config) handlerGetLobby(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	lobbyID := ID(lobbyIDInt)
+	lobby, ok := cfg.lobbies[lobbyID]
+	if !ok {
+		respondWithError(w, http.StatusNotFound, err)
+		return
+	}
 
-	lobbyData := LobbyResponse{
-		ID:      cfg.lobbies[ID(lobbyID)].ID,
-		Name:    cfg.lobbies[ID(lobbyID)].Name,
-		AdminID: cfg.lobbies[lobbyID].AdminID,
-		Link:    cfg.lobbies[lobbyID].Link,
-		Size:    cfg.lobbies[lobbyID].Size,
-	}
-	for _, con := range cfg.lobbies[lobbyID].Conn {
-		lobbyData.Players[con.userID] = con.UserName
-	}
-	data, err := json.Marshal(lobbyData)
+	data, err := json.Marshal(lobby)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, err)
 		return
@@ -119,7 +106,7 @@ func (cfg *config) handlerPostLobby(w http.ResponseWriter, r *http.Request) {
 	}
 	adminID := ID(adminIDInt)
 
-	userName, ok := cfg.playerIDtoUsername[adminID]
+	_, ok := cfg.playerIDtoUsername[adminID]
 	if !ok {
 		respondWithError(w, http.StatusUnauthorized, errors.New("invalid userID. have to login again"))
 		return
@@ -148,20 +135,13 @@ func (cfg *config) handlerPostLobby(w http.ResponseWriter, r *http.Request) {
 		Name:    lobbyName,
 		Link:    lobbyURL,
 		AdminID: ID(adminID),
-		Conn:    nil,
+		conn:    nil,
 		Size:    lobbySize,
-	}
-	newLobbyData := LobbyResponse{
-		ID:      lobbyID,
-		Name:    lobbyName,
-		Link:    lobbyURL,
-		AdminID: ID(adminID),
-		Players: map[ID]string{
-			ID(adminID): userName,
+		Players: map[ID]struct{}{
+			ID(adminID): {},
 		},
-		Size: lobbySize,
 	}
-	data, err := json.Marshal(newLobbyData)
+	data, err := json.Marshal(newLobby)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, err)
 		return
@@ -205,4 +185,34 @@ func (cfg *config) handlerDeleteLobby(w http.ResponseWriter, r *http.Request) {
 
 func (cfg *config) handlerPatchLobby(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
+	gameIDString := r.PathValue("gameID")
+	gameIDInt, err := strconv.Atoi(gameIDString)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, err)
+		return
+	}
+	gameID := ID(gameIDInt)
+	if _, ok := cfg.lobbies[ID(gameID)]; !ok {
+		respondWithError(w, http.StatusNotFound, errors.New("could'n fiind gameID "))
+		return
+	}
+	if cfg.lobbies[gameID].Size >= len(cfg.lobbies[gameID].Players) {
+		respondWithError(w, http.StatusNotAcceptable, errors.New("lobby is full"))
+		return
+	}
+
+	userIDCookie, err := r.Cookie("userID")
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, err)
+		return
+	}
+	userIDInt, err := strconv.Atoi(userIDCookie.Value)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, err)
+		return
+	}
+	userID := ID(userIDInt)
+	cfg.lobbies[gameID].Players[userID] = struct{}{}
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("successfully deleted the lobby"))
 }
