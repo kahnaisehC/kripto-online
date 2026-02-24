@@ -1,73 +1,68 @@
 {{define "lobby"}}
 {{ template "header" }}
 
+<h3 id="LobbyTitle">?</h3>
 <table id=tableLobby>
 	<thead>
 		<tr>
 			<th>ID</th>
 			<th>Name</th>
-			<th>Amount of players</th>
+			<th>Kick</th>
 		</tr>
 	</thead>
 	<tbody>
-		<tr>
-			<td>1</td>
-			<td>Alice</td>
-			<td>alice@example.com</td>
-		</tr>
+		LOADING
 	</tbody>
 </table>
 
-<form action="/api/lobby" method="POST">
-	<input type="text" name="lobbyName" value="aa" required />
-	<input type="number" name="lobbySize" value="10" required />
-	<button type="submit">create new thingy</button>
+<form action="/api/lobby" method="PATCH">
+	<button type="submit">Join!</button>
 </form>
 
 <script>
 
 
 
+	let currentURL = new URL(window.location.href)
+	console.log(currentURL.pathname)
+	document.querySelector("form").action = `/api/${currentURL.pathname}`
 
-	fetch("/api/lobby")
+	fetch("/api/" + currentURL.pathname)
 		.then(res => {
 			if (!res.ok) {
 				throw Error('Error fetching users data');
 			}
 			return res.json();
 		})
-		.then(lobbies => {
-			console.log(lobbies)
-			if (!lobbies || !lobbies.length) {
+		.then(lobby => {
+			if (!lobby) {
+				console.error("NO GAME!")
 				return
 			}
-			console.log("!?")
+			//
+			//<tr>
+			//	<td>1</td>
+			//	<td>Alice</td>
+			//	<td>alice@example.com</td>
+			//</tr>
 
-			let bod = tableLobby.querySelector("tbody")
-			for (let lobby of lobbies) {
+			console.log(lobby)
+			LobbyTitle.innerText = lobby.Name
+			let tbody = document.querySelector("tbody")
+			for (let idx in lobby.Players) {
+				let idElement = document.createElement("td");
+				idElement.innerText = idx
+				let nameElement = document.createElement("td");
+				nameElement.innerText = lobby.Players[idx]
+				let kickElement = document.createElement("td");
+				kickElement.innerText = "KICK"
 				let tr = document.createElement("tr")
-				let id = document.createElement("td")
-				id.innerText = lobby.ID
 
-				let Name = document.createElement("td")
-				let NameLink = document.createElement("a")
-				NameLink.innerText = lobby.Name
-				NameLink.href = lobby.Link
-				Name.append(NameLink)
-
-				let AmountOfPlayers = document.createElement("td")
-				if (!lobby.Conn) {
-					len = 0
-				} else {
-					len = lobby.Conn.length
-				}
-
-				AmountOfPlayers.innerText = len
-
-
-				tr.append(id, Name, AmountOfPlayers)
-				bod.append(tr);
+				tr.append(idElement, nameElement, kickElement)
+				tbody.append(tr)
 			}
+
+
 
 		})
 		.catch(err => {

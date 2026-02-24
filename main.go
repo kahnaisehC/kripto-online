@@ -43,28 +43,31 @@ func main() {
 		panic(err)
 	}
 	cfg := config{
-		connString:         sampleConnString,
-		temp:               temp,
-		sessionIDs:         map[int]string{},
-		currSessionID:      1,
-		playerIDtoUsername: map[ID]string{},
-		games:              sampleGames,
-		db:                 voidDB{},
-		jwtKey:             os.Getenv("JWT_KEY"),
-		lobbies:            map[ID]Lobby{},
+		connString:    sampleConnString,
+		temp:          temp,
+		sessionIDs:    map[int]string{},
+		currSessionID: 1,
+		playerIDtoUsername: map[ID]string{
+			1: "ian",
+		},
+		games:   sampleGames,
+		db:      voidDB{},
+		jwtKey:  os.Getenv("JWT_KEY"),
+		lobbies: map[ID]Lobby{},
 	}
 
 	mux := http.NewServeMux()
 
 	// static assets
 	mux.Handle("/css/", http.StripPrefix("", http.FileServer(http.Dir("./front"))))
+	mux.Handle("/js/", http.StripPrefix("", http.FileServer(http.Dir("./front"))))
 
 	// frontend endpoints
 	// TODO: Implement this
-	mux.HandleFunc("GET /lobby", cfg.handlerTemplate("lobby"))
+	mux.HandleFunc("GET /lobby", cfg.handlerTemplate("lobbies"))
 	mux.HandleFunc("GET /lobby/{gameID}", cfg.handlerTemplate("lobby"))
-
 	mux.HandleFunc("GET /login", cfg.handlerTemplate("login"))
+
 	mux.HandleFunc("/", cfg.handlerTemplate("login"))
 	// API
 	// NOTE: This only gives the client a cookie with a random number
