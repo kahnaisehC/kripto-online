@@ -33,7 +33,7 @@ type config struct {
 	games              map[int]GameState
 	sessions           map[string]ID
 	db                 DB
-	lobbies            map[ID]Lobby
+	lobbies            map[ID]*Lobby
 	jwtKey             string
 }
 
@@ -43,17 +43,15 @@ func main() {
 		panic(err)
 	}
 	cfg := config{
-		connString:    sampleConnString,
-		temp:          temp,
-		sessionIDs:    map[int]string{},
-		currSessionID: 1,
-		playerIDtoUsername: map[ID]string{
-			1: "ian",
-		},
-		games:   sampleGames,
-		db:      voidDB{},
-		jwtKey:  os.Getenv("JWT_KEY"),
-		lobbies: map[ID]Lobby{},
+		connString:         sampleConnString,
+		temp:               temp,
+		sessionIDs:         map[int]string{},
+		currSessionID:      1,
+		playerIDtoUsername: map[ID]string{},
+		games:              sampleGames,
+		db:                 voidDB{},
+		jwtKey:             os.Getenv("JWT_KEY"),
+		lobbies:            map[ID]*Lobby{},
 	}
 
 	mux := http.NewServeMux()
@@ -68,7 +66,7 @@ func main() {
 	mux.HandleFunc("GET /lobby/{gameID}", cfg.handlerTemplate("lobby"))
 	mux.HandleFunc("GET /login", cfg.handlerTemplate("login"))
 
-	mux.HandleFunc("/", cfg.handlerTemplate("login"))
+	// mux.HandleFunc("/", cfg.handlerTemplate("login"))
 	// API
 	// NOTE: This only gives the client a cookie with a random number
 	// that will be used to identify it later
@@ -79,18 +77,13 @@ func main() {
 	mux.HandleFunc("GET /api/lobby", cfg.handlerGetLobbies)
 	mux.HandleFunc("POST /api/lobby", cfg.handlerPostLobby)
 
-	mux.HandleFunc("DELETE /api/lobby/{gameID}", cfg.handlerDeleteLobby)
 	mux.HandleFunc("GET /api/lobby/{gameID}", cfg.handlerGetLobby)
+	mux.HandleFunc("DELETE /api/lobby/{gameID}", cfg.handlerDeleteLobby)
 	mux.HandleFunc("PATCH /api/lobby/{gameID}", cfg.handlerPatchLobby)
-
-	// TODO: Implement this
-	mux.HandleFunc("GET /api/game/{gameID}", cfg.handlerGetGame)
-	// TODO: Implement this
-	mux.HandleFunc("POST /api/game/{gameID}", cfg.handlerJoinGame)
 
 	// Websockets
 	// TODO: Implement this
-	mux.HandleFunc("/api/game/{gameID}/ws", cfg.handlerGameWebsocket)
+	mux.HandleFunc("/api/game/{gameID}/join", cfg.handlerJoinLobbyWebsocket)
 
 	serverChannel := make(chan error, 1)
 	go func() {

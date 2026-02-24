@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -26,6 +27,9 @@ type Connection struct {
 	userID   ID
 	conn     *websocket.Conn
 }
+type Channel struct {
+	ch chan string
+}
 
 type Lobby struct {
 	ID      ID
@@ -34,7 +38,8 @@ type Lobby struct {
 	AdminID ID
 	conn    []Connection
 	Size    int
-	Players map[ID]struct{}
+	Players map[ID]string
+	ch      Channel
 }
 
 const PageSize = 10
@@ -44,7 +49,7 @@ func (cfg *config) handlerGetLobbies(w http.ResponseWriter, r *http.Request) {
 	lobbies := make([]Lobby, 0, PageSize)
 
 	for _, lobby := range cfg.lobbies {
-		lobbies = append(lobbies, lobby)
+		lobbies = append(lobbies, *lobby)
 		if len(lobbies) == PageSize {
 			break
 		}
@@ -88,6 +93,30 @@ func newLobbyID() ID {
 	return _lobbyID
 }
 
+func (l *Lobby) Broadcast(msg string) {
+	for _, con := range l.conn {
+		err := con.conn.Write(context.Background(), websocket.MessageText, []byte(msg))
+		if err != nil {
+			println("ERR: " + err.Error())
+			return
+		}
+	}
+}
+
+func (l *Lobby) Start() {
+	for {
+		msg := <-l.ch.ch
+		switch msg {
+		case "join":
+			println("THE MESSAAGE IS JOIN")
+			l.Broadcast("Someone joined")
+		default:
+			println("THE MESSAAGE IS not JOIN :(")
+			println(msg)
+		}
+	}
+}
+
 func (cfg *config) handlerPostLobby(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
@@ -106,7 +135,7 @@ func (cfg *config) handlerPostLobby(w http.ResponseWriter, r *http.Request) {
 	}
 	adminID := ID(adminIDInt)
 
-	_, ok := cfg.playerIDtoUsername[adminID]
+	userName, ok := cfg.playerIDtoUsername[adminID]
 	if !ok {
 		respondWithError(w, http.StatusUnauthorized, errors.New("invalid userID. have to login again"))
 		return
@@ -137,8 +166,11 @@ func (cfg *config) handlerPostLobby(w http.ResponseWriter, r *http.Request) {
 		AdminID: ID(adminID),
 		conn:    nil,
 		Size:    lobbySize,
-		Players: map[ID]struct{}{
-			ID(adminID): {},
+		Players: map[ID]string{
+			ID(adminID): userName,
+		},
+		ch: Channel{
+			ch: make(chan string, 10),
 		},
 	}
 	data, err := json.Marshal(newLobby)
@@ -146,8 +178,10 @@ func (cfg *config) handlerPostLobby(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusInternalServerError, err)
 		return
 	}
-	cfg.lobbies[lobbyID] = newLobby
+	cfg.lobbies[lobbyID] = &newLobby
 	respondWithJSON(w, http.StatusCreated, data)
+
+	go newLobby.Start()
 }
 
 func (cfg *config) handlerDeleteLobby(w http.ResponseWriter, r *http.Request) {
@@ -212,7 +246,11 @@ func (cfg *config) handlerPatchLobby(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	userID := ID(userIDInt)
-	cfg.lobbies[gameID].Players[userID] = struct{}{}
+	userName, ok := cfg.playerIDtoUsername[userID]
+	if !ok {
+		respondWithError(w, http.StatusNotFound, errors.New("couldn't find user ID"))
+	}
+	cfg.lobbies[gameID].Players[userID] = userName
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("successfully deleted the lobby"))
+	w.Write([]byte("successfully joined the lobby"))
 }

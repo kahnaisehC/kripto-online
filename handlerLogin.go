@@ -17,7 +17,7 @@ func getUserID(r *http.Request) (ID, error) {
 	idString, err := r.Cookie("userID")
 	if err != nil {
 		// annon player
-		return -1, err
+		return 0, err
 	}
 
 	id, err := strconv.Atoi(idString.Value)
