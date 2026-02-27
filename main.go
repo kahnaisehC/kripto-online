@@ -30,7 +30,6 @@ type config struct {
 	sessionIDs         map[int]string
 	currSessionID      int
 	playerIDtoUsername map[ID]string
-	games              map[int]GameState
 	sessions           map[string]ID
 	db                 DB
 	lobbies            map[ID]*Lobby
@@ -48,7 +47,6 @@ func main() {
 		sessionIDs:         map[int]string{},
 		currSessionID:      1,
 		playerIDtoUsername: map[ID]string{},
-		games:              sampleGames,
 		db:                 voidDB{},
 		jwtKey:             os.Getenv("JWT_KEY"),
 		lobbies:            map[ID]*Lobby{},

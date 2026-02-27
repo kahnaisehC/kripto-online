@@ -2,7 +2,7 @@ package main
 
 const sampleConnString = "localhost:12312"
 
-var sampleGames = map[int]GameState{
+var sampleGames = map[int]Lobby{
 	1: {
 		ID: 1,
 		Cards: []Card{
