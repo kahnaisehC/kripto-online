@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
@@ -11,43 +10,7 @@ import (
 	"github.com/coder/websocket"
 )
 
-type KriptoMessageType int
-
-const (
-	KriptoInvalid = iota
-	KriptoStart
-	KriptoJoin
-	KriptoPlay
-	KriptoDelete
-	KriptoPoint
-	KriptoSolution
-	KriptoDisconnect
-)
-
-type KriptoAction int
-
-const (
-	KriptoNil = iota
-	KriptoFound
-	KriptoImpossible
-)
-
-type KriptoMessage struct {
-	Issuer        ID
-	Type          KriptoMessageType
-	Action        KriptoAction
-	PointedPlayer ID
-	Solution      string
-}
-
-type ID int
-
 type Session string
-
-type Card struct {
-	Value int
-	Palo  string
-}
 
 func getGameID(r *http.Request) (ID, error) {
 	idString := r.PathValue("gameID")
@@ -79,11 +42,10 @@ func (cfg *config) handlerJoinLobbyWebsocket(w http.ResponseWriter, r *http.Requ
 		respondWithError(w, http.StatusNotFound, errors.New("not found game id"))
 		return
 	}
-	if _, ok := lobby.Players[userID]; !ok {
+	if _, ok := lobby.userIDTouserIdx[userID]; !ok {
 		respondWithError(w, http.StatusNotFound, errors.New("player didn't join the lobby. Issue a Patch request first"))
 		return
 	}
-	// TODO: authenticate and relate userID to connection
 
 	con, err := websocket.Accept(w, r, &websocket.AcceptOptions{
 		Subprotocols: []string{
@@ -95,9 +57,8 @@ func (cfg *config) handlerJoinLobbyWebsocket(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	conn := Connection{
-		UserName: cfg.playerIDtoUsername[userID],
-		userID:   userID,
-		conn:     con,
+		userID: userID,
+		conn:   con,
 	}
 	lobby.conn = append(lobby.conn, conn)
 	// read
@@ -107,14 +68,12 @@ func (cfg *config) handlerJoinLobbyWebsocket(w http.ResponseWriter, r *http.Requ
 			if err != nil {
 				return
 			}
-			msg := KriptoMessage{}
-			if msgType == websocket.MessageText {
-				err := json.Unmarshal(data, &msg)
-				if err != nil {
-					log.Printf("error unmarshalling websocket message\nUserID: %v\nlobbyID: %v\nmessage: %v", userID, lobby.ID, string(data))
-					return
-				}
-			} else {
+			msg := lobbyChannelMessage{
+				Issuer:  userID,
+				Content: string(data),
+				Conn:    conn.conn,
+			}
+			if msgType != websocket.MessageText {
 				log.Println("Unsupported message type")
 				return
 			}

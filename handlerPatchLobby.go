@@ -15,12 +15,8 @@ func (cfg *config) handlerPatchLobby(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	gameID := ID(gameIDInt)
-	if _, ok := cfg.lobbies[ID(gameID)]; !ok {
-		respondWithError(w, http.StatusNotFound, errors.New("could'n fiind gameID "))
-		return
-	}
-	if cfg.lobbies[gameID].Size >= len(cfg.lobbies[gameID].Players) {
-		respondWithError(w, http.StatusNotAcceptable, errors.New("lobby is full"))
+	if _, ok := cfg.lobbies[gameID]; !ok {
+		respondWithError(w, http.StatusNotFound, errors.New("could'n fiind lobby with the given ID"))
 		return
 	}
 
@@ -35,11 +31,18 @@ func (cfg *config) handlerPatchLobby(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	userID := ID(userIDInt)
-	userName, ok := cfg.playerIDtoUsername[userID]
+	_, ok := cfg.playerIDtoUsername[userID]
 	if !ok {
 		respondWithError(w, http.StatusNotFound, errors.New("couldn't find user ID"))
+		return
 	}
-	cfg.lobbies[gameID].Players[userID] = userName
+
+	err = cfg.lobbies[gameID].Join(userID)
+	if err != nil {
+		respondWithError(w, http.StatusNotFound, err)
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("successfully joined the lobby"))
 }

@@ -32,7 +32,7 @@ func (cfg *config) handlerPostLobby(w http.ResponseWriter, r *http.Request) {
 	}
 	adminID := ID(adminIDInt)
 
-	userName, ok := cfg.playerIDtoUsername[adminID]
+	_, ok := cfg.playerIDtoUsername[adminID]
 	if !ok {
 		respondWithError(w, http.StatusUnauthorized, errors.New("invalid userID. have to login again"))
 		return
@@ -53,29 +53,14 @@ func (cfg *config) handlerPostLobby(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusBadRequest, errors.New("invalid lobby size"))
 		return
 	}
-	lobbyID := newLobbyID()
-	lobbyURL := "/lobby/" + strconv.Itoa(int(lobbyID))
 
-	newLobby := Lobby{
-		ID:      lobbyID,
-		Name:    lobbyName,
-		Link:    lobbyURL,
-		AdminID: ID(adminID),
-		conn:    nil,
-		Size:    lobbySize,
-		Players: map[ID]string{
-			ID(adminID): userName,
-		},
-		ch: Channel{
-			ch: make(chan KriptoMessage, 10),
-		},
-	}
-	data, err := json.Marshal(newLobby)
+	newLobby := NewLobby(lobbyName, lobbySize, adminID)
+	data, err := json.Marshal(&newLobby)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, err)
 		return
 	}
-	cfg.lobbies[lobbyID] = &newLobby
+	cfg.lobbies[newLobby.ID] = newLobby
 	respondWithJSON(w, http.StatusCreated, data)
 
 	go newLobby.Start()

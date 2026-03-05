@@ -20,10 +20,6 @@ func respondWithJSON(w http.ResponseWriter, code int, data []byte) {
 	w.Write(data)
 }
 
-type DB interface{}
-
-type voidDB struct{}
-
 type config struct {
 	connString         string
 	temp               *template.Template
@@ -31,9 +27,7 @@ type config struct {
 	currSessionID      int
 	playerIDtoUsername map[ID]string
 	sessions           map[string]ID
-	db                 DB
 	lobbies            map[ID]*Lobby
-	jwtKey             string
 }
 
 func main() {
@@ -47,8 +41,6 @@ func main() {
 		sessionIDs:         map[int]string{},
 		currSessionID:      1,
 		playerIDtoUsername: map[ID]string{},
-		db:                 voidDB{},
-		jwtKey:             os.Getenv("JWT_KEY"),
 		lobbies:            map[ID]*Lobby{},
 	}
 
@@ -85,10 +77,9 @@ func main() {
 
 	serverChannel := make(chan error, 1)
 	go func() {
+		fmt.Println("Serving at: http://" + cfg.connString)
 		serverChannel <- http.ListenAndServe(cfg.connString, mux)
 	}()
-
-	fmt.Println("Listening in port http://" + cfg.connString)
 
 	sigChannel := make(chan os.Signal, 1)
 	signal.Notify(sigChannel, os.Interrupt)

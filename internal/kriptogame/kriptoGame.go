@@ -1,6 +1,7 @@
 package kriptogame
 
 import (
+	"encoding/json"
 	"errors"
 	"strconv"
 	"strings"
@@ -354,4 +355,13 @@ func (game *Game) ExecuteUnsafe(msg KriptoMessage) bool {
 	}
 
 	return true
+}
+
+func (game *Game) GetStateString() string {
+	data, err := json.Marshal(game)
+	if err != nil {
+		// WARNING: This should NEVER happen so I think its fine to panic here
+		panic(err)
+	}
+	return string(data)
 }
