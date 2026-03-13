@@ -21,43 +21,43 @@ func (cfg *config) handlerPostLobby(w http.ResponseWriter, r *http.Request) {
 
 	adminIDCookie, err := r.Cookie("userID")
 	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, errors.New("have to login first"))
+		respondWithError(w, http.StatusUnauthorized, errors.New("have to login first"), []byte("have to login first"))
 		return
 	}
 
 	adminIDInt, err := strconv.Atoi(adminIDCookie.Value)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, errors.New("malformed id. have to login again"))
+		respondWithError(w, http.StatusBadRequest, errors.New("malformed id. have to login again"), []byte("malformed id. have to login again"))
 		return
 	}
 	adminID := ID(adminIDInt)
 
 	_, ok := cfg.playerIDtoUsername[adminID]
 	if !ok {
-		respondWithError(w, http.StatusUnauthorized, errors.New("invalid userID. have to login again"))
+		respondWithError(w, http.StatusUnauthorized, errors.New("invalid userID. have to login again"), []byte("invalid userID. have to login again"))
 		return
 	}
 
 	lobbyName := r.FormValue("lobbyName")
 	if lobbyName == "" {
-		respondWithError(w, http.StatusBadRequest, errors.New("not found lobby name"))
+		respondWithError(w, http.StatusBadRequest, errors.New("not found lobby name"), []byte("could'nt find lobby name"))
 		return
 	}
 	lobbySizeString := r.FormValue("lobbySize")
 	lobbySize, err := strconv.Atoi(lobbySizeString)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, errors.New("not found lobby size"))
+		respondWithError(w, http.StatusBadRequest, errors.New("not found lobby size"), []byte("have to provde a lobby size"))
 		return
 	}
 	if lobbySize >= MaxLobbySize || lobbySize < 2 {
-		respondWithError(w, http.StatusBadRequest, errors.New("invalid lobby size"))
+		respondWithError(w, http.StatusBadRequest, errors.New("invalid lobby size"), []byte("lobby size must be >= 2 && <= "+strconv.Itoa(MaxLobbySize)))
 		return
 	}
 
 	newLobby := NewLobby(lobbyName, lobbySize, adminID)
 	data, err := json.Marshal(&newLobby)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, err)
+		respondWithError(w, http.StatusInternalServerError, err, []byte("internal server error"))
 		return
 	}
 	cfg.lobbies[newLobby.ID] = newLobby

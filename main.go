@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"html/template"
 	"log"
@@ -9,9 +10,16 @@ import (
 	"os/signal"
 )
 
-func respondWithError(w http.ResponseWriter, code int, err error) {
+var defaultError = errors.New("default error")
+
+func respondWithError(w http.ResponseWriter, code int, err error, data []byte) {
+	if err == nil {
+		err = defaultError
+	}
 	log.Println(err.Error())
+	w.Header().Add("Content-type", "text/plain")
 	w.WriteHeader(code)
+	w.Write(data)
 }
 
 func respondWithJSON(w http.ResponseWriter, code int, data []byte) {
@@ -41,7 +49,7 @@ func main() {
 		sessionIDs:         map[int]string{},
 		currSessionID:      1,
 		playerIDtoUsername: map[ID]string{},
-		lobbies:            map[ID]*Lobby{},
+		lobbies:            make(map[ID]*Lobby),
 	}
 
 	mux := http.NewServeMux()

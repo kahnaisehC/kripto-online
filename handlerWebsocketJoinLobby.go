@@ -28,22 +28,22 @@ func (cfg *config) handlerJoinLobbyWebsocket(w http.ResponseWriter, r *http.Requ
 	defer r.Body.Close()
 	userID, err := getUserID(r)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, err)
+		respondWithError(w, http.StatusBadRequest, err, []byte("user ID not found. login again"))
 		return
 	}
 	gameID, err := getGameID(r)
 	if err != nil {
-		respondWithError(w, http.StatusNotFound, err)
+		respondWithError(w, http.StatusNotFound, err, []byte("couldnt find game ID or it wasnt valid"))
 		return
 	}
 	lobby, ok := cfg.lobbies[gameID]
 
 	if !ok {
-		respondWithError(w, http.StatusNotFound, errors.New("not found game id"))
+		respondWithError(w, http.StatusNotFound, errors.New("not found game id"), []byte("couldn't find lobby with the given id"))
 		return
 	}
 	if _, ok := lobby.userIDTouserIdx[userID]; !ok {
-		respondWithError(w, http.StatusNotFound, errors.New("player didn't join the lobby. Issue a Patch request first"))
+		respondWithError(w, http.StatusNotFound, errors.New("player didn't join the lobby. Issue a Patch request first"), []byte("player didn't join the lobby. Issue a Patch request first"))
 		return
 	}
 
@@ -53,7 +53,7 @@ func (cfg *config) handlerJoinLobbyWebsocket(w http.ResponseWriter, r *http.Requ
 		},
 	})
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, errors.New("unable to upgrade websocket connection"))
+		respondWithError(w, http.StatusInternalServerError, errors.New("unable to upgrade websocket connection"), []byte("error creating the websocket connection"))
 		return
 	}
 	conn := Connection{
@@ -68,16 +68,17 @@ func (cfg *config) handlerJoinLobbyWebsocket(w http.ResponseWriter, r *http.Requ
 			if err != nil {
 				return
 			}
+			// DEBUG
+			println(string(data))
+			if msgType != websocket.MessageText {
+				log.Println("Unsupported message type")
+				return
+			}
 			msg := lobbyChannelMessage{
 				Issuer:  userID,
 				Content: string(data),
 				Conn:    conn.conn,
 			}
-			if msgType != websocket.MessageText {
-				log.Println("Unsupported message type")
-				return
-			}
-
 			lobby.ch.ch <- msg
 		}
 	}()

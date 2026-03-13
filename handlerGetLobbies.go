@@ -13,17 +13,10 @@ const (
 
 func (cfg *config) handlerGetLobbies(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
-	lobbies := make([]Lobby, 0, DefaultLobbyPageSize)
 
-	for _, lobby := range cfg.lobbies {
-		lobbies = append(lobbies, *lobby)
-		if len(lobbies) == DefaultLobbyPageSize {
-			break
-		}
-	}
-	data, err := json.Marshal(lobbies)
+	data, err := json.Marshal(cfg.lobbies)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, err)
+		respondWithError(w, http.StatusInternalServerError, err, []byte("intrnal server error. Contact the admin"))
 		return
 	}
 

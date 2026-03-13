@@ -10,9 +10,8 @@ func (cfg *config) handlerTemplate(templateName string) http.HandlerFunc {
 		w.Header().Add("Content-Type", "text/html")
 		err := cfg.temp.ExecuteTemplate(w, templateName, nil)
 		if err != nil {
-			respondWithError(w, http.StatusInternalServerError, err)
+			respondWithError(w, http.StatusInternalServerError, err, []byte("internal server error"))
 			return
 		}
-
 	}
 }

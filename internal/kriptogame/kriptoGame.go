@@ -15,6 +15,7 @@ const (
 	PhaseWaitingPointer
 	PhaseWaitingSolution
 	PhaseFinished
+	PhaseClosed
 )
 
 type PlayerState int
@@ -67,6 +68,7 @@ const (
 	TypeDelete
 	TypePoint
 	TypeSolution
+	TypeNoSolution
 	TypeDisconnect
 )
 
@@ -89,25 +91,29 @@ type KriptoMessage struct {
 func (game *Game) CheckSolution(solution string) bool {
 	expressions := strings.Split(solution, ",")
 	if len(expressions) != 3 {
+		println("not the correct amount of expressions")
 		return false
 	}
 
 	values := make([]int, 0, 4)
-	for _, c := range game.Cards {
-		values = append(values, c.Value)
+	for i := 0; i < len(game.Cards)-1; i++ {
+		values = append(values, game.Cards[i].Value)
 	}
 
 	for _, exp := range expressions {
 		splittedExp := strings.Split(exp, ";")
 		if len(splittedExp) != 3 {
+			println("not the correct size of expresion")
 			return false
 		}
 		val1, err := strconv.Atoi(splittedExp[1])
 		if err != nil {
+			println("first arg is not a number")
 			return false
 		}
 		val2, err := strconv.Atoi(splittedExp[2])
 		if err != nil {
+			println("second arg is not a number")
 			return false
 		}
 		var res int
@@ -123,9 +129,11 @@ func (game *Game) CheckSolution(solution string) bool {
 			}
 		case "/":
 			if val2 == 0 {
+				println("division by zero")
 				return false
 			}
 			if val1%val2 != 0 {
+				println(strconv.Itoa(val2) + "doesnt divide " + strconv.Itoa(val1))
 				return false
 			}
 			res = val1 / val2
@@ -143,15 +151,21 @@ func (game *Game) CheckSolution(solution string) bool {
 			newVals = append(newVals, v)
 		}
 		if val1 != -1 || val2 != -1 {
+			println("what the fuck")
 			return false
 		}
 		newVals = append(newVals, res)
 		values = newVals
 	}
 	if len(values) != 1 {
+		println("values are not correct")
+		for _, v := range values {
+			println(v)
+		}
 		return false
 	}
 	if values[0] != game.Cards[len(game.Cards)-1].Value {
+		println(strconv.Itoa(values[0]) + "is not " + strconv.Itoa(game.Cards[len(game.Cards)-1].Value))
 		return false
 	}
 
@@ -171,10 +185,6 @@ func (game *Game) ParseMessage(msg string) (KriptoMessage, error) {
 	issuerIdx, err := strconv.Atoi(issuerIdxString)
 	if err != nil {
 		return kriptoMsg, err
-	}
-	// TODO: Erase this?
-	if issuerIdx < 0 || issuerIdx >= len(game.PlayersState) {
-		return kriptoMsg, errors.New("issuer Idx out of range")
 	}
 
 	msgType := splittedMsg[1]
@@ -212,6 +222,7 @@ func (game *Game) ParseMessage(msg string) (KriptoMessage, error) {
 			return kriptoMsg, errors.New("pointed player is not able to be pointed")
 		}
 		kriptoMsg.PointedPlayer = pointedIdx
+		kriptoMsg.Type = TypePoint
 
 	case "solution":
 		/// AAAAAAA
@@ -223,6 +234,9 @@ func (game *Game) ParseMessage(msg string) (KriptoMessage, error) {
 		}
 		kriptoMsg.Solution = splittedMsg[2]
 		kriptoMsg.Type = TypeSolution
+
+	case "nosolution":
+		kriptoMsg.Type = TypeNoSolution
 
 	case "disconnect":
 		kriptoMsg.Type = TypeDisconnect
@@ -244,7 +258,7 @@ func (game *Game) CheckMessageValidity(msg KriptoMessage) error {
 		if game.PlayersState[msg.IssuerIdx] != PlayerStatePending {
 			return errors.New("player is not pending")
 		}
-		if game.Phase != PhasePending {
+		if game.Phase != PhaseWaitingActions {
 			return errors.New("game is not in Pending state")
 		}
 		switch msg.Action {
@@ -268,6 +282,8 @@ func (game *Game) CheckMessageValidity(msg KriptoMessage) error {
 			return errors.New("cannot point to that player")
 		}
 
+	case TypeNoSolution:
+		fallthrough
 	case TypeSolution:
 		if game.PlayersState[msg.IssuerIdx] != PlayerStatePointed {
 			return errors.New("the issuer is not being pointed")
@@ -324,10 +340,29 @@ func (game *Game) ExecuteUnsafe(msg KriptoMessage) bool {
 			for i, s := range game.PlayersState {
 				if s == PlayerStateImpossible || s == PlayerStatePending || s == PlayerStatePoint {
 					game.PlayersState[i] = PlayerStateDefeated
+				} else if s == PlayerStatePointed || s == PlayerStateFound {
+					game.PlayersState[i] = PlayerStatePending
 				}
 			}
 		} else {
-			game.PlayersState[msg.IssuerIdx] = PlayerStateDefeated
+			for i, s := range game.PlayersState {
+				if s == PlayerStatePointed || s == PlayerStatePending {
+					game.PlayersState[i] = PlayerStateDefeated
+				} else if s == PlayerStateFound || s == PlayerStateImpossible || s == PlayerStatePoint {
+					game.PlayersState[i] = PlayerStatePending
+				}
+			}
+		}
+		game.Cards = generateHand()
+		game.Phase = PhaseWaitingActions
+
+	case TypeNoSolution:
+		for i, s := range game.PlayersState {
+			if s == PlayerStatePointed || s == PlayerStatePending {
+				game.PlayersState[i] = PlayerStateDefeated
+			} else if s == PlayerStateFound || s == PlayerStateImpossible || s == PlayerStatePoint {
+				game.PlayersState[i] = PlayerStatePending
+			}
 		}
 		game.Cards = generateHand()
 		game.Phase = PhaseWaitingActions
